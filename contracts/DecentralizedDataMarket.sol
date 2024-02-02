@@ -16,15 +16,23 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
 
     uint256 public platformFee = 0.05 ether; // Percentage for platform (e.g., 5%)
     uint256 public mintFee = 0.001 ether;
+    uint256 public monthlyFee = 0.002 ether;
     uint256 private _tokenIdCounter;
 
     enum DataCategory { PUBLIC, PRIVATE, CONFIDENTIAL }
 
+    struct Subscription {
+        uint256 expiresAt;
+        DataCategory category;
+    }
+
     mapping(uint256 => uint256) public tokenPrices;
     mapping(uint256 => DataCategory) public dataCategories;
+    mapping(address => mapping(uint256 => Subscription)) public subscriptions;
 
     event DataTokenCreated(uint256 indexed tokenId, string indexed dataHash, DataCategory indexed category, address creator);
     event DataListedForSale(uint256 indexed tokenId, uint256 indexed price, address creator);
+    event SubscriptionCreated(address creator, uint256 indexed tokenId, uint256 duration);
 
     modifier onlyOwnerOf(uint256 tokenId) {
         require(ownerOf(tokenId) == msg.sender, "Only token owner can perform this action");
@@ -80,7 +88,37 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
         return tokenPrices[tokenId];
     }
 
-    // TODO: Subscription model
+    function requestDataAccess(uint256 tokenId) public payable onlyRole(CONSUMER_ROLE) returns (string memory) {
+        Subscription memory subscription = subscriptions[msg.sender][tokenId];
+        require (subscription.expiresAt <= block.timestamp, "Subscription expired");
+        require (subscription.category <= dataCategories[tokenId], "insufficient access level");
+        return tokenURI(tokenId);
+    }
+
+    function subscribeToToken(uint256 tokenId) public payable onlyRole(CONSUMER_ROLE) {
+        require(tokenId <= _tokenIdCounter, "Token does not exist");
+        require(msg.value >= monthlyFee, "Insufficient funds");
+
+        // Require token approval or ownership
+        require(isApprovedForAll(ownerOf(tokenId), msg.sender) || getApproved(tokenId) == msg.sender || ownerOf(tokenId) == msg.sender, "Token not approved");
+
+        // Calculate subscription duration based on price and rate (e.g., 1 month per 0.002 ETH)
+        uint256 duration = 30 * 1 days;
+
+        // Create subscription
+        subscriptions[msg.sender][tokenId] = Subscription({
+            expiresAt: block.timestamp + duration,
+            category: dataCategories[tokenId] // Grant access to the token's category
+        });
+
+        // Process payments to owner and platform fees
+        uint256 ownerValue = monthlyFee * (100 - platformFee) / 100;
+        uint256 platformValue = monthlyFee - ownerValue;
+        payable(ownerOf(tokenId)).transfer(ownerValue);
+        payable(owner()).transfer(platformValue); 
+
+        emit SubscriptionCreated(msg.sender, tokenId, duration);
+    }
 
     // Access control
     function getDataURI(uint256 tokenId) public view onlyRole(DATA_PROVIDER_ROLE) onlyOwnerOf(tokenId) returns (string memory) {

@@ -13,14 +13,17 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
     bytes32 public constant DATA_PROVIDER_ROLE = keccak256("DATA_PROVIDER_ROLE");
     bytes32 public constant CONSUMER_ROLE = keccak256("CONSUMER_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-  
+
     uint256 public platformFee = 0.05 ether; // Percentage for platform (e.g., 5%)
     uint256 public mintFee = 0.001 ether;
     uint256 private _tokenIdCounter;
 
-    mapping(uint256 => uint256) public tokenPrices;
+    enum DataCategory { PUBLIC, PRIVATE, CONFIDENTIAL }
 
-    event DataTokenCreated(uint256 indexed tokenId, string indexed dataHash, address creator);
+    mapping(uint256 => uint256) public tokenPrices;
+    mapping(uint256 => DataCategory) public dataCategories;
+
+    event DataTokenCreated(uint256 indexed tokenId, string indexed dataHash, DataCategory indexed category, address creator);
     event DataListedForSale(uint256 indexed tokenId, uint256 indexed price, address creator);
 
     modifier onlyOwnerOf(uint256 tokenId) {
@@ -32,7 +35,7 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function mintDataToken(string memory ipfsHash) public payable onlyRole(DATA_PROVIDER_ROLE) {
+    function mintDataToken(string memory ipfsHash, DataCategory category) public payable onlyRole(DATA_PROVIDER_ROLE) {
         // Check if sender has sufficient balance
         require(msg.value >= mintFee, "Insufficient fee");
 
@@ -45,13 +48,39 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
 
         // Link the token to the IPFS data hash using setTokenURI
         _setTokenURI(tokenId, ipfsHash);
-
+        dataCategories[tokenId] = category; // Store the category for later access control
+        
         // Pay mintFee to the protocol owner
         payable(owner()).transfer(mintFee);
 
         // Emit the DataTokenCreated event with the correct hash
-        emit DataTokenCreated(tokenId, ipfsHash, msg.sender);
+        emit DataTokenCreated(tokenId, ipfsHash, category, msg.sender);
     }
+
+    // Marketplace & Revenue Sharing
+    function listDataForSale(uint256 tokenId, uint256 price) public onlyRole(DATA_PROVIDER_ROLE) onlyOwnerOf(tokenId) {
+        require(price > 0, "Price must be greater than zero");
+        tokenPrices[tokenId] = price;
+        emit DataListedForSale(tokenId, price, msg.sender);
+    }
+
+    // Purchase a data asset
+    function purchaseData(uint256 tokenId) public payable onlyRole(CONSUMER_ROLE) {
+        uint256 tokenPrice = priceOf(tokenId);
+        require(tokenPrice > 0, "Token has not price set yet");
+        require(msg.value >= tokenPrice, "Insufficient funds");
+        uint256 sellerValue = tokenPrice * (100 - platformFee) / 100;
+        uint256 platformValue = tokenPrice - sellerValue;
+        safeTransferFrom(ownerOf(tokenId), msg.sender, tokenId);
+        payable(ownerOf(tokenId)).transfer(sellerValue);
+        payable(owner()).transfer(platformValue); 
+    }
+
+    function priceOf(uint256 tokenId) public view returns (uint256) {
+        return tokenPrices[tokenId];
+    }
+
+    // TODO: Subscription model
 
     // Access control
     function getDataURI(uint256 tokenId) public view onlyRole(DATA_PROVIDER_ROLE) onlyOwnerOf(tokenId) returns (string memory) {

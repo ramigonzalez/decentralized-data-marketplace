@@ -32,6 +32,27 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
+    function mintDataToken(string memory ipfsHash) public payable onlyRole(DATA_PROVIDER_ROLE) {
+        // Check if sender has sufficient balance
+        require(msg.value >= mintFee, "Insufficient fee");
+
+        // Check if sender has sufficient balance
+        require(bytes(ipfsHash).length > 0, "Failed to store data on IPFS");
+
+        // Mint the token and link it to the IPFS hash string
+        uint256 tokenId = _tokenIdCounter + 1;
+        _safeMint(msg.sender, tokenId);
+
+        // Link the token to the IPFS data hash using setTokenURI
+        _setTokenURI(tokenId, ipfsHash);
+
+        // Pay mintFee to the protocol owner
+        payable(owner()).transfer(mintFee);
+
+        // Emit the DataTokenCreated event with the correct hash
+        emit DataTokenCreated(tokenId, ipfsHash, msg.sender);
+    }
+
     // Access control
     function getDataURI(uint256 tokenId) public view onlyRole(DATA_PROVIDER_ROLE) onlyOwnerOf(tokenId) returns (string memory) {
         // Get the IPFS hash

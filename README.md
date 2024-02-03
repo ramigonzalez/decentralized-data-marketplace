@@ -39,7 +39,8 @@ We'll utilize these OpenZeppelin libraries:
 2. Open a new terminal and run `npx hardhat run --network localhost scripts/deploy.js` to deploy the contract in the local network
 
 ### Deploy the protocol in seploia
-2. Open a new terminal and run `npx hardhat run --network sepolia scripts/deploy.js` to deploy the contract in sepolia testnet
+1. Open a new terminal and run `npx hardhat run --network sepolia scripts/deploy.js` to deploy the contract in sepolia testnet
+Note: There is a contract already deployed in sepolia network at address: `0xD5a640fAC82FD990D8594b4618baE3ED56ADE066`
 
 ## Key features and functionality
 

@@ -34,6 +34,13 @@ We'll utilize these OpenZeppelin libraries:
 3. Compile and deploy contracts
 4. Interact with contracts using a web3 or ethers library
 
+### Deploy the protocol in a local network with hardhat
+1. Open a terminal and run `npx hardhat node` to run a local hardhat node
+2. Open a new terminal and run `npx hardhat run --network localhost scripts/deploy.js` to deploy the contract in the local network
+
+### Deploy the protocol in seploia
+2. Open a new terminal and run `npx hardhat run --network sepolia scripts/deploy.js` to deploy the contract in sepolia testnet
+
 ## Key features and functionality
 
 ### Data tokenization

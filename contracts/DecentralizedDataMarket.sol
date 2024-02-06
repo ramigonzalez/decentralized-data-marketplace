@@ -19,7 +19,7 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
     uint256 public platformFee = 0.05 ether; // Percentage for platform (e.g., 5%)
     uint256 public mintFee = 0.001 ether;
     uint256 public monthlyFee = 0.002 ether;
-    uint256 private _tokenIdCounter;
+    uint256 public tokenIdCounter;
 
     enum DataCategory { PUBLIC, PRIVATE, CONFIDENTIAL }
 
@@ -64,8 +64,9 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
         require(bytes(ipfsHash).length > 0, "Invalid IPFS hash");
 
         // Mint the token and link it to the IPFS hash string
-        uint256 tokenId = _tokenIdCounter + 1;
+        uint256 tokenId = tokenIdCounter + 1;
         _safeMint(msg.sender, tokenId);
+        tokenIdCounter++;
 
         // Link the token to the IPFS data hash using setTokenURI
         _setTokenURI(tokenId, ipfsHash);
@@ -130,7 +131,7 @@ contract DecentralizedDataMarket is ERC721URIStorage, AccessControl, Ownable {
     /// @dev Throw if the msg.value is less than the monthlyFee. Message: "Insufficient funds"
     /// @param tokenId The token id of the desired data asset
     function subscribeToToken(uint256 tokenId) public payable onlyRole(CONSUMER_ROLE) {
-        require(tokenId <= _tokenIdCounter, "Token does not exist");
+        require(tokenId <= tokenIdCounter, "Token does not exist");
         require(msg.value >= monthlyFee, "Insufficient funds");
 
         // Require token approval or ownership

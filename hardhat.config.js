@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-verify");
 require('dotenv').config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -23,4 +24,10 @@ module.exports = {
       },
     },
   },
+  etherscan: {
+    apiKey: "W6JH9Y8KBI8KGVAGV7X1S15ZZ8SFQPZI49"
+  },
+  sourcify: {
+    enabled: true
+  }
 };
